@@ -1,12 +1,5 @@
 <template>
   <div id="app">
-    <!-- Debug Info -->
-    <div style="position: fixed; top: 0; left: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; z-index: 1000;">
-      <div>Auth State: {{ isAuthenticated ? 'Authenticated' : 'Not Authenticated' }}</div>
-      <div>User: {{ currentUser?.email || 'No User' }}</div>
-      <div>Current Route: {{ $route.path }}</div>
-    </div>
-
 
     <header v-if="isAuthenticated" class="app-header">
       <div class="header-content">

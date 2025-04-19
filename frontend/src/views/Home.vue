@@ -6,32 +6,42 @@
     </header>
 
     <main class="main-content">
-      <ConversationModule
-        :conversation="conversation"
-        :userInput="userInput"
-        :isProcessing="isProcessing"
-        :formatTimestamp="formatTimestamp"
-        @submitMessage="submitMessage"
-        @endConversation="endConversation"
-        @update:userInput="val => userInput = val"
-      />
-      <div v-if="modules.length === 0" style="background: #ffeb3b; color: #b26a00; padding: 1em; margin-bottom: 1em; border-radius: 8px; text-align: center;">
-        <strong>Loading modules...</strong>
-      </div>
-      <draggable
-        v-model="modules"
-        :options="{ animation: 200, handle: '.module-card-ui' }"
-        @end="onModuleOrderChange"
-        item-key="id"
-        class="modules-draggable-list"
-      >
-        <template #item="{ element }">
-          <DynamicModule
-            :module="element"
-            @save="handleModuleSave"
-          />
+      <div class="modules-list">
+        <!-- static conversation card -->
+        <ConversationModule
+          class="wellness-tracker-card conversation-section"
+          :conversation="conversation"
+          :userInput="userInput"
+          :isProcessing="isProcessing"
+          :formatTimestamp="formatTimestamp"
+          @submitMessage="submitMessage"
+          @endConversation="endConversation"
+          @update:userInput="val => userInput = val"
+        />
+        <!-- loading placeholder -->
+        <template v-if="modules.length === 0">
+          <div class="wellness-tracker-card loading-card">
+            <strong>Loading modules...</strong>
+          </div>
         </template>
-      </draggable>
+        <draggable
+          v-model="orderedModules"
+          item-key="id"
+          tag="div"
+          style="display: contents;"
+          :draggable="'.wellness-tracker-card:not(.conversation-section)'"
+        >
+          <template #item="{ element }">
+            <DynamicModule
+              class="wellness-tracker-card"
+              :module="element"
+              :userId="userId"
+              @save="handleModuleSave"
+              :key="element.id"
+            />
+          </template>
+        </draggable>
+      </div>
     </main>
   </div>
 </template>
@@ -67,7 +77,28 @@ export default {
     const preferences = computed(() => store.getters['preferences/getPreferences'])
     // Fetch modules from Firestore on mount
     onMounted(async () => {
-      modules.value = await fetchModules()
+      const fetched = await fetchModules();
+      modules.value = Array.isArray(fetched)
+        ? fetched.filter(m => m && m.id && m.fields)
+        : [];
+      // --- PATCH: If modules are not valid, use a hardcoded test module ---
+      if (!modules.value.length || typeof modules.value[0] === 'string') {
+        modules.value = [
+          {
+            id: 'test-mood',
+            name: 'Mood Tracker',
+            fields: [
+              {
+                label: 'Mood',
+                type: 'emoji',
+                options: ['😊', '😐', '😢', '😠']
+              }
+            ]
+          }
+        ];
+        console.warn('[Home.vue] Using hardcoded test module. Fix fetchModules or Firestore schema for production.');
+      }
+      console.log('[Home.vue] modules.value after fetch:', JSON.parse(JSON.stringify(modules.value)));
     })
 
     // Watch for changes in preferences.moduleOrder and reorder modules accordingly
@@ -81,11 +112,14 @@ export default {
     })
     // Default order, can be extended
     const moduleOrder = computed(() => {
+      const validModules = modules.value.filter(m => m && m.id && m.fields);
+      const validIds = validModules.map(m => m.id);
       const prefOrder = preferences.value && preferences.value.moduleOrder
       if (Array.isArray(prefOrder) && prefOrder.length > 0) {
-        return prefOrder
+        // Only include ids that are in validIds
+        return prefOrder.filter(id => validIds.includes(id));
       }
-      return defaultPreferences.moduleOrder
+      return defaultPreferences.moduleOrder.filter(id => validIds.includes(id));
     })
 
     // Conversation and input state must be defined before orderedModules
@@ -162,42 +196,17 @@ export default {
 
     // Always inject correct props for each module
     const orderedModules = computed(() => {
-      const modules = moduleOrder.value.map(id => {
-        if (id === 'moodTracking') {
-          return { id, component: 'WellnessTracker', props: { userId: props.userId, mode: 'moodTracking' } }
-        }
-        if (id === 'sleepHours') {
-          return { id, component: 'WellnessTracker', props: { userId: props.userId, mode: 'sleepHours' } }
-        }
-        if (id === 'sleepQuality') {
-          return { id, component: 'WellnessTracker', props: { userId: props.userId, mode: 'sleepQuality' } }
-        }
-        if (id === 'conversation') {
-          return {
-            id, component: 'ConversationModule',
-            props: {
-              conversation: conversation.value,
-              userInput: userInput.value,
-              isProcessing: isProcessing.value,
-              formatTimestamp,
-            },
-            listeners: {
-              submitMessage,
-              endConversation,
-              'update:userInput': val => { userInput.value = val }
-            }
-          }
-        }
-        if (id === 'waterIntake') {
-          return { id, component: 'WaterIntakeModule', props: { userId: props.userId } }
-        }
-        if (id === 'weather') {
-          return { id, component: 'WeatherModule', props: { userId: props.userId } }
-        }
-        return null
-      })
-      return modules.filter(Boolean)
+      // If no moduleOrder, show all modules
+      if (!moduleOrder.value || moduleOrder.value.length === 0) {
+        return modules.value;
+      }
+      const result = moduleOrder.value
+        .map(id => modules.value.find(m => m.id === id))
+        .filter(Boolean)
+      return result;
     })
+
+
 
     // Update order in Vuex and backend
     const updateModuleOrder = (modules) => {
@@ -226,7 +235,7 @@ export default {
       {
         id: 'goals',
         title: 'Goals',
-        description: 'What progress did you make toward your goals today?'
+        description: 'What progress did you made toward your goals today?'
       }
     ]
 
@@ -294,6 +303,11 @@ export default {
       store.dispatch('preferences/updateModuleOrder', newOrder)
     }
 
+
+
+
+
+
     return {
       selectedModel,
       userInput,
@@ -306,8 +320,15 @@ export default {
       preferences,
       modules,
       handleModuleSave,
-      onModuleOrderChange
+      onModuleOrderChange,
+      handleModuleSave,
+      onModuleOrderChange,
+      orderedModules,
+      // do NOT return dynamicModules
     };
+  },
+  methods: {
+
   }
 }
 </script>
@@ -426,5 +447,34 @@ button {
 button:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+.modules-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.modules-list > * {
+  width: 100%;
+}
+
+/* conversation and loading placeholder span two columns */
+.modules-list > .conversation-section,
+.modules-list > .loading-card {
+  grid-column: span 2;
+}
+
+.modules-list .wellness-tracker-card {
+  max-width: none;
+  width: 100%;
+}
+
+.loading-card {
+  background: #ffeb3b;
+  color: #b26a00;
+  padding: 1em;
+  border-radius: 8px;
+  text-align: center;
 }
 </style>

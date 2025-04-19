@@ -1,4 +1,4 @@
-import { getDocs, collection, query, where, orderBy } from "firebase/firestore";
+import { getDocs, collection, query, where, orderBy, doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/firebase";
 
 export async function fetchModules() {
@@ -9,4 +9,10 @@ export async function fetchModules() {
   );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+// Delete a module by id from Firestore
+export async function deleteModule(moduleId) {
+  const moduleRef = doc(db, "modules", moduleId);
+  await deleteDoc(moduleRef);
 }

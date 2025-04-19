@@ -34,31 +34,10 @@
       </div>
     </div>
 
-    <div v-if="selectedDate" class="journal-entries">
-      <h3>Journal Entries for {{ formatSelectedDate }}</h3>
+    <div v-if="selectedDate">
+      <h3>Journal History for {{ formatSelectedDate }}</h3>
       <div v-if="loadingEntries" class="loading">Loading entries...</div>
-      <div v-else-if="selectedEntries.length === 0" class="no-entries">
-        No entries for this date
-      </div>
-      <div v-else class="entries-list">
-        <div v-for="entry in selectedEntries" :key="entry.id" class="entry-card">
-          <div class="entry-header">
-            <span class="entry-time">{{ formatTime(entry.createdAt) }}</span>
-            <span class="entry-mood" :style="{ backgroundColor: entry.moodColor }">
-              {{ entry.moodEmoji }}
-            </span>
-          </div>
-          <div class="entry-content">
-            <div class="conversation">
-              <div v-for="(message, index) in entry.conversation" 
-                   :key="index"
-                   :class="['message', message.type]">
-                <p>{{ message.content }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <JournalHistory v-else :entries="selectedEntries" />
     </div>
   </div>
 </template>
@@ -66,6 +45,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import store from '@/store'
+import JournalHistory from '@/components/JournalHistory.vue'
 
 export default {
   name: 'CalendarView',
@@ -74,6 +54,9 @@ export default {
       type: String,
       required: true
     }
+  },
+  components: {
+    JournalHistory
   },
   setup(props) {
     const currentDate = ref(new Date())

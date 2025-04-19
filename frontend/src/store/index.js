@@ -96,14 +96,26 @@ export default createStore({
     },
 
     async saveConversation({ commit }, { conversation, userId }) {
+      let responseData;
       try {
-        await api.post('/journal/conversation', {
+        const response = await api.post('/journal/conversation', {
           conversation,
           userId
-        })
+        });
+        responseData = response.data;
+        // Commit to local history
+        const userMessage = conversation.find(m => m.type === 'user')?.content || '';
+        const entry = {
+          id: (responseData.id || Date.now()).toString(),
+          prompt: userMessage,
+          conversation,
+          createdAt: new Date()
+        };
+        commit('ADD_JOURNAL_ENTRY', entry);
+        return responseData;
       } catch (error) {
-        console.error('Error saving conversation:', error)
-        throw error
+        console.error('Error saving conversation:', error);
+        throw error;
       }
     },
 

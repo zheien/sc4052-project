@@ -1,30 +1,25 @@
 <template>
-  <div class="admin-module-manager p-4 border rounded bg-gray-50 mt-8">
+  <div class="admin-module-manager max-w-3xl mx-auto p-6 bg-white rounded-xl shadow mt-10" style="background: #fff; border-radius: 1.25rem; box-shadow: 0 4px 24px 0 rgba(80,125,255,0.08), 0 1.5px 6px 0 rgba(80,125,255,0.04); padding: 2.5rem 2rem 2rem 2rem; margin-top: 2.5rem;">
     <h2 class="text-lg font-bold mb-4 flex items-center">
       <span class="mr-2">🛠️</span> Manage Global Modules
     </h2>
     <div v-if="loading" class="text-gray-500">Loading modules...</div>
     <div v-else>
-      <div class="mb-6">
-        <form @submit.prevent="onSubmit">
-          <div class="flex flex-wrap gap-4 mb-2">
-            <input v-model="form.id" placeholder="Module ID (e.g. mood)" class="input" required />
+      <div class="mb-8">
+        <div class="bg-gray-50 rounded-lg p-6 shadow-sm mb-8">
+          <h3 class="text-lg font-semibold mb-4 text-blue-700">Add or Edit Module</h3>
+        <form @submit.prevent="onSubmit" class="space-y-5">
+          <div class="flex flex-col md:flex-row gap-4 mb-2">
             <input v-model="form.name" placeholder="Name" class="input" required />
-            <div class="flex items-center gap-2">
-  <label class="font-semibold">Icon:</label>
-  <span v-if="form.icon" class="text-2xl">{{ form.icon }}</span>
-  <div class="flex flex-wrap gap-1">
-    <button v-for="emoji in emojiKeyboard.slice(0, 30)" :key="emoji" type="button" class="emoji-btn" @click="form.icon = emoji">{{ emoji }}</button>
-  </div>
-</div>
-            <input v-model.number="form.order" placeholder="Order" type="number" class="input w-24" required />
+
             <label class="flex items-center">
               <input type="checkbox" v-model="form.enabled" class="mr-1" /> Enabled
             </label>
           </div>
           <div class="mb-2">
-            <label class="block font-semibold mb-1">Fields</label>
-            <div v-for="(field, idx) in form.fields" :key="idx" class="flex flex-wrap items-center gap-2 mb-1">
+            <div class="font-semibold mb-2 text-gray-700">Fields</div>
+            <div v-for="(field, idx) in form.fields" :key="idx" class="flex flex-col md:flex-row md:items-center gap-2 mb-2 bg-gray-100 rounded p-3">
+              <div class="flex gap-2 flex-1">
               <select v-model="field.type" class="input w-28">
                 <option value="emoji">Emoji</option>
                 <option value="number">Number</option>
@@ -48,20 +43,24 @@
                 <input v-model.number="field.min" type="number" placeholder="Min" class="input w-16" />
                 <input v-model.number="field.max" type="number" placeholder="Max" class="input w-16" />
               </template>
-              <button type="button" class="btn btn-sm btn-red" @click="removeField(idx)">&times;</button>
+              </div>
+              <button type="button" class="btn btn-sm btn-red self-start md:self-center" @click="removeField(idx)">&times;</button>
             </div>
-            <button type="button" class="btn btn-sm btn-blue mt-1" @click="addField">+ Add Field</button>
+            <div class="add-field-btn-row flex justify-end">
+              <button type="button" class="btn btn-xs btn-blue add-field-btn" @click="addField">+ Add Field</button>
+            </div>
           </div>
-          <button type="submit" class="btn btn-blue mr-2">{{ editMode ? 'Update' : 'Add' }} Module</button>
-          <button v-if="editMode" type="button" class="btn btn-gray" @click="resetForm">Cancel</button>
+          <div class="form-action-btn-group flex justify-center md:justify-end">
+            <button type="submit" class="btn btn-blue module-btn hover:shadow-md transition-shadow duration-200">{{ editMode ? 'Update' : 'Add' }} Module</button>
+            <button v-if="editMode" type="button" class="btn btn-gray module-btn hover:shadow-md transition-shadow duration-200" @click="resetForm">Cancel</button>
+          </div>
         </form>
       </div>
       <div class="mt-8">
-        <h3 class="font-semibold mb-2">Preview</h3>
-        <div class="module-card-ui">
-          <div class="card-header">
-            <span class="module-icon">{{ form.icon }}</span>
-            <span class="module-name">{{ form.name }}</span>
+        <h3 class="font-semibold mb-2 mt-10">Preview</h3>
+        <div class="module-card-ui bg-gray-50 rounded-lg shadow-sm p-5">
+          <div class="card-header mb-3">
+            <span class="module-name font-semibold text-blue-800 text-lg">{{ form.name }}</span>
           </div>
           <form class="card-form" @submit.prevent>
             <div v-for="field in form.fields" :key="field.label" class="form-field-ui">
@@ -80,37 +79,42 @@
         </div>
       </div>
       <div>
-        <h3 class="font-semibold mb-2">Existing Modules</h3>
-        <table class="w-full text-left border-t">
-          <thead>
-            <tr>
-              <th class="py-1">ID</th>
-              <th>Name</th>
-              <th>Icon</th>
-              <th>Order</th>
-              <th>Enabled</th>
-              <th>Fields</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="mod in modules" :key="mod.id">
-              <td class="py-1">{{ mod.id }}</td>
-              <td>{{ mod.name }}</td>
-              <td>{{ mod.icon }}</td>
-              <td>{{ mod.order }}</td>
-              <td>{{ mod.enabled ? 'Yes' : 'No' }}</td>
-              <td><pre class="whitespace-pre-wrap text-xs">{{ JSON.stringify(mod.fields, null, 1) }}</pre></td>
-              <td>
-                <button class="btn btn-sm btn-yellow mr-1" @click="editModule(mod)">Edit</button>
-                <button class="btn btn-sm btn-red" @click="deleteModule(mod.id)">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <h3 class="font-semibold mb-2 mt-10">Existing Modules</h3>
+        <div class="overflow-x-auto rounded-lg shadow-sm">
+          <table class="w-full text-left border-t bg-white">
+            <thead class="bg-gray-100">
+              <tr style="display: grid; grid-template-columns: 1.5fr 1fr 2.5fr 1.2fr; align-items: center; gap: 0.5rem;">
+                <th class="py-2 px-3 font-semibold text-gray-700">Name</th>
+                <th class="py-2 px-3 font-semibold text-gray-700">Enabled</th>
+                <th class="py-2 px-3 font-semibold text-gray-700">Fields</th>
+                <th class="py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(mod, index) in modules" :key="mod.id" :class="(index % 2 === 0) ? 'bg-gray-50' : ''" style="display: grid; grid-template-columns: 1.5fr 1fr 2.5fr 1.2fr; align-items: center; gap: 0.5rem;">
+                <td class="py-2 px-3">{{ mod.name }}</td>
+                <td class="py-2 px-3">{{ mod.enabled ? 'Yes' : 'No' }}</td>
+                <td class="py-2 px-3"><ul class="field-list">
+  <li v-for="field in mod.fields" :key="field.label">
+    <span class="font-semibold">{{ field.label }}</span> ({{ field.type }})
+    <span v-if="field.type === 'emoji' && field.options && field.options.length">: <span class="emoji-options">{{ field.options.join(' ') }}</span></span>
+    <span v-else-if="field.type === 'number'">: Min {{ field.min }} – Max {{ field.max }}</span>
+  </li>
+</ul></td>
+                <td class="py-2 px-3">
+                  <div class="action-btn-group">
+                    <button class="btn btn-sm btn-yellow module-btn" @click="editModule(mod)">Edit</button>
+                    <button class="btn btn-sm btn-red module-btn" @click="deleteModule(mod.id)">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
+    </div>
+</div>
 </template>
 
 <script>
@@ -185,9 +189,23 @@ export default {
 
     async function onSubmit() {
       const preparedFields = processFieldsBeforeSave()
-      await setDoc(doc(db, 'modules', form.value.id), { ...form.value, fields: preparedFields })
-      await fetchModules()
-      resetForm()
+      let id = form.value.id
+      if (!id || typeof id !== 'string' || id.trim() === '') {
+        if (!editMode.value) {
+          id = Date.now().toString()
+          form.value.id = id
+        } else {
+          alert('Module ID cannot be empty. Please provide a valid ID.')
+          return
+        }
+      }
+      try {
+        await setDoc(doc(db, 'modules', id), { ...form.value, fields: preparedFields })
+        await fetchModules()
+        resetForm()
+      } catch (err) {
+        alert('Error saving module: ' + (err?.message || err));
+      }
     }
 
     function editModule(mod) {
@@ -243,12 +261,66 @@ export default {
   margin-bottom: 0.5rem;
 }
 .btn {
-  padding: 0.3rem 0.8rem;
-  border-radius: 4px;
-  font-size: 0.95rem;
+  padding: 0.3rem 0.95rem;
+  border-radius: 5px;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   border: none;
+  box-shadow: 0 1px 2px rgba(80,125,255,0.04);
+  transition: background 0.18s;
+}
+.btn:focus {
+  outline: 2px solid #2563eb;
+}
+.btn-sm {
+  font-size: 0.92rem;
+  padding: 0.13rem 0.7rem;
+}
+.btn-yellow {
+  background: #fde68a;
+  color: #b45309;
+}
+.btn-yellow:hover {
+  background: #fbbf24;
+  color: #a16207;
+}
+.btn-red {
+  background: #ef4444;
+  color: #fff;
+}
+.btn-red:hover {
+  background: #dc2626;
+}
+.btn-blue {
+  background: #2563eb;
+  color: #fff;
+}
+.btn-blue:hover {
+  background: #1d4ed8;
+}
+.btn-gray {
+  background: #e5e7eb;
+  color: #111;
+}
+.input {
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.5rem 0.85rem;
+  margin-bottom: 0.2rem;
+  font-size: 1rem;
+  background: #f9fafb;
+  transition: border-color 0.18s;
+}
+.input:focus {
+  border-color: #2563eb;
+  background: #fff;
+}
+pre {
+  background: #f3f4f6;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.98em;
 }
 .btn-blue { background: #2563eb; color: #fff; }
 .btn-gray { background: #e5e7eb; color: #111; }
@@ -271,5 +343,78 @@ pre {
   background: #f3f4f6;
   padding: 0.2rem 0.4rem;
   border-radius: 3px;
+}
+.action-btn-group {
+  display: flex;
+  gap: 1rem;
+  margin: 0.25rem 0 0.15rem 0;
+}
+.module-btn {
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(80,125,255,0.08);
+  margin: 0 2px;
+  transition: box-shadow 0.18s, transform 0.13s;
+}
+.module-btn:hover {
+  box-shadow: 0 2px 8px rgba(37,99,235,0.18);
+  transform: translateY(-2px) scale(1.04);
+  filter: brightness(1.04);
+}
+.add-field-btn-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+.add-field-btn {
+  min-width: 120px;
+  max-width: 160px;
+  padding: 0.45rem 1.1rem;
+  border-radius: 7px;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(80,125,255,0.09);
+  transition: box-shadow 0.18s, transform 0.13s, background 0.18s;
+  margin-left: 0.5rem;
+}
+.add-field-btn:hover {
+  box-shadow: 0 2px 8px rgba(37,99,235,0.18);
+  transform: translateY(-2px) scale(1.04);
+  filter: brightness(1.05);
+  background: #2563eb;
+  color: #fff;
+}
+.form-action-btn-group {
+  display: flex;
+  gap: 1.1rem;
+  margin-top: 1.2rem;
+  margin-bottom: 0.5rem;
+  justify-content: flex-end;
+}
+@media (max-width: 600px) {
+  .form-action-btn-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
+    justify-content: center;
+  }
+}
+.module-btn {
+  min-width: 120px;
+  padding: 0.48rem 1.1rem;
+  border-radius: 7px;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(80,125,255,0.09);
+  transition: box-shadow 0.18s, transform 0.13s, background 0.18s;
+  margin: 0;
+}
+.module-btn:hover {
+  box-shadow: 0 2px 8px rgba(37,99,235,0.18);
+  transform: translateY(-2px) scale(1.04);
+  filter: brightness(1.05);
+  background: #2563eb;
+  color: #fff;
 }
 </style>
